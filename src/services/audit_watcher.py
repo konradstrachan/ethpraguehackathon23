@@ -154,13 +154,13 @@ def generate_audit(address):
 
 def perform_static_ai_anaylsis(code):
     # Construct the initial message with your prompt
-    prompt = f"Audit the following Solidity smart contract only reporting critical security issues. If you are unable to audit say 'unable to audit':\n```solidity\n{code}\n```"
+    prompt = f"Audit the following Solidity smart contract only reporting critical security issues listing each with a number bullet point. If you are unable to audit say 'unable to audit':\n```solidity\n{code}\n```"
 
     # Create the API request
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are a security auditor making an audit report of critical issues."},
+            {"role": "system", "content": "You are a security auditor making an audit report of critical issues without recommendations."},
             {"role": "user", "content": prompt}
         ]
     )
@@ -208,7 +208,7 @@ def perform_static_ai_anaylsis(code):
         if 'unable to audit' in report or 'Unable to audit':
             hasIssues = True
 
-        print("Has issues : " + str(hasIssues))
+        print("Contract is free from issues : " + str(hasIssues == False))
         
         return (hasIssues == False), report
     
@@ -266,15 +266,16 @@ def audit_code(address, code, abi):
         print("Static analysis failed")
 
     # Stage 2: Fuzz the functions (needs ABI)
-    fuzzer_result = ""
+    fuzzer_report = ""
+    fuzzer_result = True
     #fuzzer_result, fuzz_report = perform_fuzzing_analysis(address, code, abi)
 
     #if fuzzer_result == False:
     #    print("Static analysis failed")
 
     auditResult = True
-    #if static_result != True or fuzzer_result != True:
-    #    auditResult = False
+    if static_result != True or fuzzer_result != True:
+        auditResult = False
 
     combinedReport = "Findings from AI analysis:\n" + static_report + "\n\nFrom fuzzing:\n" + fuzzer_report
 
@@ -304,7 +305,7 @@ def run_watcher():
 def test_decompiler():
     print("Test mode")
     # Use tether contract as test
-    #generate_audit("0xdAC17F958D2ee523a2206206994597C13D831ec7")
+    generate_audit("0xdAC17F958D2ee523a2206206994597C13D831ec7")
     # AAVE Wrapped Token Gateway v3
     #generate_audit("0xD322A49006FC828F9B5B37Ab215F99B4E5caB19C")
     # Sea port
@@ -312,7 +313,7 @@ def test_decompiler():
     # Circle
     #generate_audit("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
     # Coinbase wallet proxy
-    generate_audit("0xe66b31678d6c16e9ebf358268a790b763c133750")
+    #generate_audit("0xe66b31678d6c16e9ebf358268a790b763c133750")
 
     # Summarize code?
     # Static analysis is limited but perform as initial step
