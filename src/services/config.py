@@ -1,2 +1,3 @@
-web3_provider = "https://mainnet.infura.io/v3/..."
-etherscan_api_key = "..."
+web3_provider = "xxx"
+etherscan_api_key = "xxx"
+openai_api_key = 'xxx'
