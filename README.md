@@ -1,5 +1,9 @@
 # ChainSpecter
 
+![image](https://github.com/konradstrachan/ethpraguehackathon23/assets/21056525/57957e30-c6e4-4e4a-b9e7-e3277e7b426e)
+
+Security vulnerabilities are spooky
+
 ## Description 
 
 This project seeks to provide an insight into how AI guided auditing using existing tools currently looks like whilst also seeking to democratise access to cheap, fast audits with verifiable results recorded on chain.
