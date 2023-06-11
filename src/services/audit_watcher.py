@@ -6,18 +6,21 @@ import hashlib
 
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
-from hashlib import sha256
+from eth_account import Account
+#from hashlib import sha256
 
 # Woke fuzzer
 #from woke.fuzz import Fuzzer   # TODO
-from woke.testing import *
-from woke.testing.fuzzing import *
+#from woke.testing import *
+#from woke.testing.fuzzing import *
 
 import openai
 
 from config import web3_provider
 from config import etherscan_api_key
 from config import openai_api_key
+from config import operator_address
+from config import operator_private_key
 from template import resultTemplate, positiveIcon, negativeIcon
 
 openai.api_key = openai_api_key
@@ -39,10 +42,8 @@ openai.api_key = openai_api_key
 attestationContract = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
 blockExplorerAddressLink = "https://explorer.test.taiko.xyz/address/"
 apiBlockExplorer = "https://explorer.test.taiko.xyz/api"
+apiRPC = "https://rpc.test.taiko.xyz"
 blockExplorerAPI = "blockscout" # etherscan or blockscout
-
-owner_address = "0xabcdef..."  # Address of the owner of the Python script
-private_key = "your-private-key"  # Private key of the owner's address
 
 def generate_hash(result, summary):
     if result == True:
@@ -165,7 +166,6 @@ def get_contract_code(address, mode = blockExplorerAPI):
 
         return None
 
-
 def get_contract_bytecode(address):
     # Get the contract bytecode
     web3 = Web3(Web3.HTTPProvider(web3_provider))
@@ -188,15 +188,48 @@ def decompile_bytecode(bytecode):
     #return decompiled_code
 
 def push_audit_result(address, result, summary):
-    # Generate URL and checksum
+    web3 = Web3(Web3.HTTPProvider(apiRPC))
+
+    account = Account.from_key(operator_private_key)
+    web3.eth.defaultAccount = account.address
+
+    if account.address != operator_address:
+        print("WARNING key mismatch gen:" + account.address + " expected " + operator_address)
+
+    # TODO cache
+    abi = get_contract_abi(attestationContract)
+    contract = web3.eth.contract(address=attestationContract, abi=abi)
+
+    # call params
+    contract_address = '0x5FbDB2315678afecb367f032d93F642f64180aa3'
     url = "https://example.com/audit?contractAddress=" + address
     hash = generate_hash(result, summary)
 
+    w3 = Web3()
 
-    # Post the audit result back to the contract
-    #contract.functions.setAuditResult(address, url, hash).transact(
-    #    {"from": owner_address}
-    #)
+    encoded_address = web3.to_checksum_address(contract_address)
+
+    keccak_hash = hashlib.sha3_256(hash.encode('utf-8')).digest()
+    keccak_hex = w3.to_hex(keccak_hash)
+
+    txCount = w3.eth.get_transaction_count(account.address)
+
+    transaction = contract.functions.setAuditResult(
+        encoded_address,
+        url,
+        keccak_hex ).build_transaction({
+        'gas': 70000,
+        'gasPrice': web3.to_wei('1', 'gwei'),
+        'from': account.address,
+        'nonce': txCount
+        }) 
+
+    # Sign the transaction
+    signed_txn = w3.eth.account.sign_transaction(transaction, private_key=operator_private_key)
+
+    # Send the signed transaction
+    tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+    print(tx_hash)
 
 def generate_audit(address):
     print("Auding " + address + "...")
@@ -426,11 +459,14 @@ def test_project():
 
     ## Tests on Taiko
     # Audit thyself
-    generate_audit("0x5FbDB2315678afecb367f032d93F642f64180aa3")
+    #generate_audit("0x5FbDB2315678afecb367f032d93F642f64180aa3")
 
     ## Tests of generation
     #write_template_file("0x12345", True, "Everything is fine")
     #write_template_file("0x123456", False, "Nothing is fine")
+
+    # Tests of calling back on chain
+    push_audit_result("0x5FbDB2315678afecb367f032d93F642f64180aa3", True, "Everything is good")
 
 # Main entry point
 # run_watcher()
