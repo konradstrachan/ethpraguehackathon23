@@ -22,7 +22,14 @@ from template import resultTemplate, positiveIcon, negativeIcon
 
 openai.api_key = openai_api_key
 
-attestationContract = "0x1234"
+## Contract and blockexplorer API will change depending on network
+# Scroll : 0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5
+#          https://blockscout.scroll.io/address/
+# Taiko  : 0x5FbDB2315678afecb367f032d93F642f64180aa3
+#          https://explorer.test.taiko.xyz/address/
+
+attestationContract = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+blockExplorerAddressLink = "https://explorer.test.taiko.xyz/address/"
 
 owner_address = "0xabcdef..."  # Address of the owner of the Python script
 private_key = "your-private-key"  # Private key of the owner's address
@@ -46,7 +53,8 @@ def write_template_file(address, result, summary):
         icon = negativeIcon
 
     variables = {
-        '$contractAddress': '0x1234567890abcdef',
+        '$contractAddress': address,
+        '$blockExplorerLink' : blockExplorerAddressLink,
         '$auditResult': auditResult,
         '$icon': icon,
         '$auditHash': generate_hash(result, summary),
@@ -357,7 +365,7 @@ def test_decompiler():
     # Sea port
     #generate_audit("0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC")
     # Circle
-    #generate_audit("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    generate_audit("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
     # Coinbase wallet proxy
     #generate_audit("0xe66b31678d6c16e9ebf358268a790b763c133750")
 
@@ -365,8 +373,8 @@ def test_decompiler():
     # Static analysis is limited but perform as initial step
     # AI to generate fuzzing tests
 
-    write_template_file("0x12345", True, "Everything is fine")
-    write_template_file("0x123456", False, "Nothing is fine")
+    #write_template_file("0x12345", True, "Everything is fine")
+    #write_template_file("0x123456", False, "Nothing is fine")
 
 # Main entry point
 # run_watcher()

@@ -1,4 +1,4 @@
-resultTemplate = """
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -55,7 +55,7 @@ resultTemplate = """
     <script src="https://cdn.jsdelivr.net/npm/web3@1.5.3/dist/web3.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            const contractAddress = $verificationContract;
+            const contractAddress = 0x5FbDB2315678afecb367f032d93F642f64180aa3;
             const functionName = "checkAudit";
 
             // Function to handle connecting a wallet
@@ -89,32 +89,29 @@ resultTemplate = """
     <h1>Smart Contract Audit Result</h1>
     
     <h2>Contract Details</h2>
-    <p>Contract Address: <a href="$blockExplorerLink$contractAddress" target="_blank">$contractAddress</a></p>
-    <p>Verification hash: $auditHash</p>
+    <p>Contract Address: <a href="https://explorer.test.taiko.xyz/address/0xdAC17F958D2ee523a2206206994597C13D831ec7" target="_blank">0xdAC17F958D2ee523a2206206994597C13D831ec7</a></p>
+    <p>Verification hash: d1f74e5085b6d57daaeb293d3fe650da96999bb66aafe40225fcd3a2aa3dee7a</p>
     <p>Verification: <button id="verify">Verify</button><span id="verify_result"></></p>
 
     <h2>Audit Result</h2>
-    <div class="bar $auditResult">
-    $icon    
-        $auditResult
-    </div>
+    <div class="bar Failed">
     
-    <h2>Audit Notes</h2>
-    <textarea rows="8" cols="50" readonly>$auditNotes</textarea>
-</body>
-</html>
-"""
-
-positiveIcon = """
-    <span class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#ffffff">
-                <path d="M9 16.17l-3.59-3.59L4 14l5 5 10-10L19.59 7z"/>
-            </svg>
-    </span>
-    """
-
-negativeIcon = """
     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#ffffff">
                 <path d="M10.34 6.34L12 4.66 13.66 6.34 15 5l-1.66-1.66L15 1 13.66 2.34 12 1.66 10.34 3 9 1.66 10.66 1 12 2.34 13.66 1 15 1.66 13.34 3 12 4.66 10.34 6.34zM12 19c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-2c3.31 0 6-2.69 6-6s-2.69-6-6-6-6 2.69-6 6 2.69 6 6 6z"/>
             </svg>
-"""
+    
+        Failed
+    </div>
+    
+    <h2>Audit Notes</h2>
+    <textarea rows="8" cols="50" readonly>Findings from AI analysis:
+1. The constructor function of the Ownable contract seems to omit the "constructor" keyword making it old syntax that still runs in newer version but should be avoided for clarity;
+2. The addBlackList(), removeBlackList() and destroyBlackFunds() functions of BlackList contract need modifier "onlyOwner" for security;
+3. The ERC20Basic function totalSupply() does not have an implementation, however, it is not critical because it is only a getter function not critical to the contract functionality;
+4. The use of deprecated functions in TetherToken contract (transferByLegacy(), transferFromByLegacy(), approveByLegacy() and allowance()) could pose a security risk; 
+5. When the owner sets a new maximum fee, it can be too high (up to 49,999,999,999 tokens) which could be a risk for loss of funds.
+
+From fuzzing:
+</textarea>
+</body>
+</html>
