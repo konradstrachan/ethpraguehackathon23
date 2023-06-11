@@ -25,11 +25,21 @@ openai.api_key = openai_api_key
 ## Contract and blockexplorer API will change depending on network
 # Scroll : 0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5
 #          https://blockscout.scroll.io/address/
+#          ABI API : https://blockscout.scroll.io/api?module=contract&action=getabi&address=
 # Taiko  : 0x5FbDB2315678afecb367f032d93F642f64180aa3
 #          https://explorer.test.taiko.xyz/address/
 
+## Values for testing on Scroll
+#attestationContract = "0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5"
+#blockExplorerAddressLink = "https://blockscout.scroll.io/address/"
+#apiBlockExplorer = "https://blockscout.scroll.io/api"
+#blockExplorerAPI = "blockscout" # etherscan or blockscout
+
+## Values for testing on Taiko
 attestationContract = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
 blockExplorerAddressLink = "https://explorer.test.taiko.xyz/address/"
+apiBlockExplorer = "https://explorer.test.taiko.xyz/api"
+blockExplorerAPI = "blockscout" # etherscan or blockscout
 
 owner_address = "0xabcdef..."  # Address of the owner of the Python script
 private_key = "your-private-key"  # Private key of the owner's address
@@ -87,39 +97,74 @@ def removeComments(solidity_string):
     
     return stripped_string
 
-def get_contract_abi(address):
-    url = f"https://api.etherscan.io/api?module=contract&action=getabi&address={address}&apikey={etherscan_api_key}"
+def get_contract_abi(address, mode = blockExplorerAPI):
+    if mode == 'etherscan':
+        url = f"https://api.etherscan.io/api?module=contract&action=getabi&address={address}&apikey={etherscan_api_key}"
 
-    try:
-        response = requests.get(url)
-        data = response.json()
+        try:
+            response = requests.get(url)
+            data = response.json()
+            
+            if data["status"] == "1" and data["message"] == "OK":
+                contract_abi = data["result"]
+                return contract_abi
+            
+        except requests.exceptions.RequestException as e:
+            print("Error retrieving contract ABI:", str(e))
         
-        if data["status"] == "1" and data["message"] == "OK":
-            contract_abi = data["result"]
-            return contract_abi
+        return None
+    else:
+        url = apiBlockExplorer + "?module=contract&action=getabi&address=" + address
+
+        try:
+            response = requests.get(url)
+            data = response.json()
+            
+            if data["message"] == "OK":
+                contract_abi = data["result"]
+                return contract_abi
+            
+        except requests.exceptions.RequestException as e:
+            print("Error retrieving contract ABI:", str(e))
         
-    except requests.exceptions.RequestException as e:
-        print("Error retrieving contract ABI:", str(e))
-    
-    return None
+        return None
 
-def get_contract_code(address):
-    url = f"https://api.etherscan.io/api?module=contract&action=getsourcecode&address={address}&apikey={etherscan_api_key}"
+def get_contract_code(address, mode = blockExplorerAPI):
+    if mode == 'etherscan':
+        url = f"https://api.etherscan.io/api?module=contract&action=getsourcecode&address={address}&apikey={etherscan_api_key}"
 
-    try:
-        response = requests.get(url)
-        data = response.json()
-        if data["status"] == "1" and data["message"] == "OK" and len(data["result"]) > 0:
-            # NOTE : this ridiculous structure ES uses means this will get 
-            # confused for new style multi-contract submissions
-            sources = data["result"][0]["SourceCode"]
-            return sources
-        else:
-            print("Failed to get verified contract code:", data["message"])
-    except requests.exceptions.RequestException as e:
-        print("Error connecting to Etherscan API:", str(e))
+        try:
+            response = requests.get(url)
+            data = response.json()
+            if data["status"] == "1" and data["message"] == "OK" and len(data["result"]) > 0:
+                # NOTE : this ridiculous structure ES uses means this will get 
+                # confused for new style multi-contract submissions
+                sources = data["result"][0]["SourceCode"]
+                return sources
+            else:
+                print("Failed to get verified contract code:", data["message"])
+        except requests.exceptions.RequestException as e:
+            print("Error connecting to Etherscan API:", str(e))
 
-    return None
+        return None
+    else:
+        url = apiBlockExplorer + "?module=contract&action=getsourcecode&address=" + address
+
+        try:
+            response = requests.get(url)
+            data = response.json()
+            if data["status"] == "1" and data["message"] == "OK" and len(data["result"]) > 0:
+                # NOTE : this ridiculous structure ES uses means this will get 
+                # confused for new style multi-contract submissions
+                sources = data["result"][0]["SourceCode"]
+                return sources
+            else:
+                print("Failed to get verified contract code:", data["message"])
+        except requests.exceptions.RequestException as e:
+            print("Error connecting to Etherscan API:", str(e))
+
+        return None
+
 
 def get_contract_bytecode(address):
     # Get the contract bytecode
@@ -189,6 +234,7 @@ def generate_audit(address):
     cc = removeComments(cc)
     optimisedCodeSize = len(cc)
 
+    print("Initial " + str(initialCodeSize) + " optimised " + str(optimisedCodeSize))
     reducedSizeAmount = (float(optimisedCodeSize) / float(initialCodeSize)) * 100
     print("Optimised code is " + str(int(reducedSizeAmount)) + "% smaller")
 
@@ -336,12 +382,15 @@ def audit_code(address, code, abi):
     return auditResult, combinedReport
 
 def run_watcher():
-    # Connect to the Ethereum network
+    print("Full mode")
+
     web3 = Web3(Web3.HTTPProvider(web3_provider))
     web3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
+    abi = get_contract_abi(attestationContract)
+
     # Load the contract ABI and address
-    contract = web3.eth.contract(address=contract_address, abi=contract_abi)
+    contract = web3.eth.contract(address=attestationContract, abi=abi)
 
     # Set the owner's account as the default account
     web3.eth.default_account = owner_address
@@ -356,8 +405,10 @@ def run_watcher():
 
         time.sleep(30)  # Wait for 30 seconds before checking for new events
 
-def test_decompiler():
+def test_project():
     print("Test mode")
+    
+    ## Tests on ethereum
     # Use tether contract as test
     #generate_audit("0xdAC17F958D2ee523a2206206994597C13D831ec7")
     # AAVE Wrapped Token Gateway v3
@@ -365,14 +416,19 @@ def test_decompiler():
     # Sea port
     #generate_audit("0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC")
     # Circle
-    generate_audit("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+    #generate_audit("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
     # Coinbase wallet proxy
     #generate_audit("0xe66b31678d6c16e9ebf358268a790b763c133750")
 
-    # Summarize code?
-    # Static analysis is limited but perform as initial step
-    # AI to generate fuzzing tests
+    ## Tests on Scroll
+    # Audit thyself
+    #generate_audit("0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5")
 
+    ## Tests on Taiko
+    # Audit thyself
+    generate_audit("0x5FbDB2315678afecb367f032d93F642f64180aa3")
+
+    ## Tests of generation
     #write_template_file("0x12345", True, "Everything is fine")
     #write_template_file("0x123456", False, "Nothing is fine")
 
@@ -380,4 +436,4 @@ def test_decompiler():
 # run_watcher()
 
 # Entry point for testing
-test_decompiler()
+test_project()
