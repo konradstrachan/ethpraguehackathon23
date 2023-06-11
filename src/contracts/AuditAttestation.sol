@@ -10,12 +10,16 @@ contract AuditAttestation is Ownable {
     event AuditRequested(address indexed contractAddress);
     event AuditResultSet(address indexed contractAddress, string url, bytes32 checksum);
 
+    constructor(address initialOwner) Ownable(initialOwner) {}
+
     function requestAudit(address contractAddress) external payable {
-        require(msg.value >= 0.01 ether, "Insufficient payment for audit request");
+        require(msg.value >= 0.1 ether, "Insufficient payment (0.1ETH) for audit request");
 
         // Refund if this audit has already been paid for
         // TODO what happens if we want to rerequest?
-        require(auditCompleted[contractAddress] == false, "Audit already compelted");
+        require(auditCompleted[contractAddress] == false, "Audit already completed");
+
+        require(msg.value >= 0.1 ether, "Insufficient payment (0.1ETH) for audit request");
 
         emit AuditRequested(contractAddress);
     }

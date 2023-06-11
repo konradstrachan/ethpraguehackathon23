@@ -2,6 +2,7 @@ import time
 import requests
 import re
 import json
+import hashlib
 
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
@@ -17,11 +18,49 @@ import openai
 from config import web3_provider
 from config import etherscan_api_key
 from config import openai_api_key
+from template import resultTemplate, positiveIcon, negativeIcon
 
 openai.api_key = openai_api_key
 
+attestationContract = "0x1234"
+
 owner_address = "0xabcdef..."  # Address of the owner of the Python script
 private_key = "your-private-key"  # Private key of the owner's address
+
+def generate_hash(result, summary):
+    if result == True:
+        resultValue = "Pass"
+    else:
+        resultValue = "Fail"
+
+    sha256_hash = hashlib.sha256()
+    sha256_hash.update(resultValue.encode('utf-8') + summary.encode('utf-8')) 
+    return sha256_hash.hexdigest()
+
+def write_template_file(address, result, summary):
+    if result == True:
+        auditResult = "Passed"
+        icon = positiveIcon
+    else:
+        auditResult = "Failed"
+        icon = negativeIcon
+
+    variables = {
+        '$contractAddress': '0x1234567890abcdef',
+        '$auditResult': auditResult,
+        '$icon': icon,
+        '$auditHash': generate_hash(result, summary),
+        '$auditNotes': summary,
+        '$verificationContract': attestationContract
+    }
+
+    content = resultTemplate
+    for var_name, var_value in variables.items():
+        content = content.replace(var_name, var_value)
+
+    output_file = address + ".html"
+    with open(output_file, 'w') as file:
+        file.write(content)
 
 def has_numbered_bullet_points(text):
     bullet_points = re.findall(r'\d+\.\s(.+)', text)
@@ -95,24 +134,23 @@ def decompile_bytecode(bytecode):
     #print(decompiled_code)
     #return decompiled_code
 
-def push_audit_result(address, result):
-    # Perform the audit (simplified for demonstration purposes)
-    try:
-        # Generate URL and checksum
-        url = "https://example.com/audit-report/" + address
-        checksum = sha256(address.encode()).hexdigest()
+def push_audit_result(address, result, summary):
+    # Generate URL and checksum
+    url = "https://example.com/audit?contractAddress=" + address
+    hash = generate_hash(result, summary)
 
-        # Post the audit result back to the contract
-        contract.functions.setAuditResult(address, url, checksum).transact(
-            {"from": owner_address}
-        )
 
-        print("Audit result posted to the contract")
-    except SolcError as e:
-        print("Error compiling contract:", str(e))
+    # Post the audit result back to the contract
+    #contract.functions.setAuditResult(address, url, hash).transact(
+    #    {"from": owner_address}
+    #)
 
 def generate_audit(address):
     print("Auding " + address + "...")
+
+    #
+    # Collect artifacts needed
+    #
 
     cc = get_contract_code(address)
 
@@ -144,12 +182,20 @@ def generate_audit(address):
     optimisedCodeSize = len(cc)
 
     reducedSizeAmount = (float(optimisedCodeSize) / float(initialCodeSize)) * 100
-
     print("Optimised code is " + str(int(reducedSizeAmount)) + "% smaller")
 
-    audit_passed, audit = audit_code(address, cc, abi)
+    #
+    # Perform the actual auditing
+    #
+    
+    audit_passed, combinedReport = audit_code(address, cc, abi)
     print("Audit result: " + str(audit_passed) + " for " + address)
 
+    #
+    # Record the results to file and on-chain
+    #
+
+    write_template_file(address, audit_passed, combinedReport)
     #push_audit_result(address, audit_passed)
 
 def perform_static_ai_anaylsis(code):
@@ -305,7 +351,7 @@ def run_watcher():
 def test_decompiler():
     print("Test mode")
     # Use tether contract as test
-    generate_audit("0xdAC17F958D2ee523a2206206994597C13D831ec7")
+    #generate_audit("0xdAC17F958D2ee523a2206206994597C13D831ec7")
     # AAVE Wrapped Token Gateway v3
     #generate_audit("0xD322A49006FC828F9B5B37Ab215F99B4E5caB19C")
     # Sea port
@@ -318,6 +364,9 @@ def test_decompiler():
     # Summarize code?
     # Static analysis is limited but perform as initial step
     # AI to generate fuzzing tests
+
+    write_template_file("0x12345", True, "Everything is fine")
+    write_template_file("0x123456", False, "Nothing is fine")
 
 # Main entry point
 # run_watcher()
