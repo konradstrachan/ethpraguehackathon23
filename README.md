@@ -39,6 +39,8 @@ This project was created as part of the ETH Prague 2023 hackathon.
 
 ## Usage
 
+![image](https://github.com/konradstrachan/ethpraguehackathon23/assets/21056525/4518ec97-0dd1-4482-b209-b2d134136c3f)
+
 ### requestAudit(address contractAddress)
 
 This function allows users to request an audit for a specific contract by providing the contractAddress parameter. The function requires a payment of at least 0.1 ETH to proceed. 
