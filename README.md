@@ -1,5 +1,9 @@
 # ChainSpecter
 
+![image](https://github.com/konradstrachan/ethpraguehackathon23/assets/21056525/b7072f6f-d48b-45e9-835f-49d82f0f25d3)
+
+This project won the [Taiko: Infrastructure](https://devfolio.co/projects/chainspecter-e7ef) prize at Eth Prague 2023 ❤️
+
 ![image](https://github.com/konradstrachan/ethpraguehackathon23/assets/21056525/57957e30-c6e4-4e4a-b9e7-e3277e7b426e)
 
 Security vulnerabilities are spooky
